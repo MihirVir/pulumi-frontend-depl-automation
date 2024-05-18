@@ -26,7 +26,6 @@ export class Frontend extends pulumi.ComponentResource {
       {
         name: `${args.Name}-repl`,
         product: args.Product,
-        public: false,
       },
       { parent: this },
     );

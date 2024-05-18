@@ -14,34 +14,46 @@ export class FrontBucket extends pulumi.ComponentResource {
     super("pkg:index:FrontBucket", baseResourceName, {}, opts);
 
     const stack = pulumi.getStack();
-
     const bucketName = `${baseResourceName}-${stack}`;
+    const isPublic = args.public || false;
 
-    if (args.public) {
-      const bucket = new aws.s3.Bucket(
-        bucketName,
-        {
-          bucket: bucketName,
-          tags: {
-            Environment: stack,
-          },
+    const website = {
+      indexDocument: "index.html",
+      errorDocument: "error.html",
+      routingRules: `[{
+        "Condition": {
+          "KeyPrefixEquals": "docs/"
         },
-        { parent: this },
-      );
+        "Redirect": {
+          "ReplaceKeyPrefixWith": "documents/"
+        }
+      }]`,
+    };
 
-      const publicAccessBlock = new aws.s3.BucketPublicAccessBlock(
-        bucketName,
-        {
-          bucket: bucket.id,
-          blockPublicAcls: false,
-          ignorePublicAcls: false,
-          blockPublicPolicy: false,
-          restrictPublicBuckets: false,
+    const bucket = new aws.s3.Bucket(
+      bucketName,
+      {
+        bucket: bucketName,
+        tags: {
+          Environment: stack,
         },
-        { parent: bucket },
-      );
-    } else {
-    }
+        ...(isPublic ? {} : { acl: "private" }),
+        ...(isPublic ? { website: website } : {}),
+      },
+      { parent: this },
+    );
+
+    new aws.s3.BucketPublicAccessBlock(
+      bucketName,
+      {
+        bucket: bucket.id,
+        blockPublicAcls: !isPublic,
+        ignorePublicAcls: !isPublic,
+        blockPublicPolicy: !isPublic,
+        restrictPublicBuckets: !isPublic,
+      },
+      { parent: this },
+    );
 
     this.registerOutputs();
   }
